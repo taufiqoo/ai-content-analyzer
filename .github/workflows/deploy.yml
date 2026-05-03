@@ -37,25 +37,19 @@ jobs:
             # Navigate to project directory
             cd /home/ubuntu/ai-content-analyzer
 
-            # Install Docker if not exists (Optional fallback)
-            if ! command -v docker &> /dev/null; then
-              echo "Docker not found. Installing..."
-              sudo apt-get update
-              sudo apt-get install -y ca-certificates curl
-              sudo install -m 0755 -d /etc/apt/keyrings
-              sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-              sudo chmod a+r /etc/apt/keyrings/docker.asc
-              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-              sudo apt-get update
-              sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-              sudo usermod -aG docker $USER
+            # Install/Update Docker and Docker Compose
+            if ! command -v docker &> /dev/null || ! docker compose version &> /dev/null; then
+              echo "Installing/Updating Docker..."
+              curl -fsSL https://get.docker.com | sudo sh
+              sudo apt-get update && sudo apt-get install -y docker-buildx-plugin docker-compose-plugin
             fi
 
-            # Recreate .env file from GitHub Secrets
-            # We assume you store your entire .env content in a secret named ENV_FILE
-            echo "${{ secrets.ENV_FILE }}" > .env
+            # Recreate .env file from GitHub Secrets (Safe multiline handling)
+            cat << 'EOF' > .env
+            ${{ secrets.ENV_FILE }}
+            EOF
 
             # Start the application using Docker Compose
             sudo docker compose down
-            sudo docker compose build
+            sudo docker compose build --no-cache
             sudo docker compose up -d
