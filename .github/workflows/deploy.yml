@@ -43,13 +43,14 @@ jobs:
             fi
 
             sudo docker compose down --remove-orphans
-            sudo docker system prune -af
-            sudo docker volume prune -f
+            sudo docker image prune -af
+            sudo docker system prune -af --volumes
             sudo docker builder prune -af
+            df -h /
 
             cat << 'EOF' > .env
             ${{ secrets.ENV_FILE }}
             EOF
 
-            sudo docker compose build --no-cache
-            sudo docker compose up -d
+            sudo docker compose build frontend backend
+            sudo docker compose up -d --remove-orphans

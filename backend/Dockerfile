@@ -1,6 +1,7 @@
 FROM python:3.11-slim-bookworm
 
 WORKDIR /app
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 RUN apt-get update && apt-get install -y \
     wget gnupg curl \
@@ -14,8 +15,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN playwright install chromium && \
-    playwright install-deps chromium
+RUN playwright install chromium
 
 COPY . .
 
