@@ -1,0 +1,60 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to AWS EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "."
+          target: "/home/ubuntu/ai-content-analyzer"
+          rm: true
+          # Exclude files/folders that don't need to be sent
+          exclude: ".git,.github,node_modules,.venv,frontend/node_modules,backend/.venv,*.md"
+
+      - name: Execute deployment commands on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Navigate to project directory
+            cd /home/ubuntu/ai-content-analyzer
+
+            # Install Docker if not exists (Optional fallback)
+            if ! command -v docker &> /dev/null; then
+              echo "Docker not found. Installing..."
+              sudo apt-get update
+              sudo apt-get install -y ca-certificates curl
+              sudo install -m 0755 -d /etc/apt/keyrings
+              sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+              sudo chmod a+r /etc/apt/keyrings/docker.asc
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              sudo apt-get update
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+              sudo usermod -aG docker $USER
+            fi
+
+            # Recreate .env file from GitHub Secrets
+            # We assume you store your entire .env content in a secret named ENV_FILE
+            echo "${{ secrets.ENV_FILE }}" > .env
+
+            # Start the application using Docker Compose
+            sudo docker compose down
+            sudo docker compose build
+            sudo docker compose up -d
