@@ -6,12 +6,16 @@ import json
 import re
 from typing import Optional
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
-from playwright_stealth import Stealth
 import logging
 import os
 
 logger = logging.getLogger(__name__)
 from app.config import settings
+
+try:
+    from playwright_stealth import stealth_async
+except ImportError:
+    stealth_async = None
 
 STATE_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "twitter_state.json")
 
@@ -79,8 +83,10 @@ class TwitterScraper:
                 }
             ])
             page = await context.new_page()
-            stealth = Stealth()
-            await stealth.apply_stealth_async(page)
+            if stealth_async:
+                await stealth_async(page)
+            else:
+                logger.warning("[Scraper] playwright_stealth not available, skipping stealth mode.")
 
             try:
                 logger.info("[Scraper] Navigating to bookmarks directly...")

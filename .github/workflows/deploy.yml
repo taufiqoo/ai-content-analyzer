@@ -46,6 +46,8 @@ jobs:
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://${{ secrets.EC2_HOST }}:8000
           push: true
           tags: |
             ${{ env.FRONTEND_IMAGE }}
