@@ -1,0 +1,19 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: ai-content-analyzer-frontend:dev
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: ai-content-analyzer-backend:dev
+    volumes:
+      - ./backend:/app
+
+  worker:
+    image: ai-content-analyzer-backend:dev
+    volumes:
+      - ./backend:/app

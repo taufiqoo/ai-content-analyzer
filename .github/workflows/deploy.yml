@@ -10,18 +10,54 @@ jobs:
   deploy:
     name: Deploy to AWS EC2
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/ai-content-analyzer-backend:${{ github.sha }}
+      FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/ai-content-analyzer-frontend:${{ github.sha }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Copy files to EC2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}
+            ghcr.io/${{ github.repository_owner }}/ai-content-analyzer-backend:latest
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}
+            ghcr.io/${{ github.repository_owner }}/ai-content-analyzer-frontend:latest
+
+      - name: Copy compose files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "."
+          source: "docker-compose.yml,docker-compose.dev.yml"
           target: "/home/ubuntu/ai-content-analyzer"
           rm: false
 
@@ -32,6 +68,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            mkdir -p /home/ubuntu/ai-content-analyzer
             cd /home/ubuntu/ai-content-analyzer
 
             if ! command -v docker &> /dev/null || ! docker compose version &> /dev/null; then
@@ -40,15 +77,15 @@ jobs:
               sudo apt-get update && sudo apt-get install -y docker-buildx-plugin docker-compose-plugin
             fi
 
-            sudo docker compose down --remove-orphans
-            sudo docker image prune -af
-            sudo docker system prune -af --volumes
-            sudo docker builder prune -af
-            df -h /
+            echo "${{ secrets.GHCR_TOKEN }}" | sudo docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
 
             cat << 'EOF' > .env
             ${{ secrets.ENV_FILE }}
             EOF
 
-            sudo docker compose build frontend backend
+            echo "BACKEND_IMAGE=${{ env.BACKEND_IMAGE }}" >> .env
+            echo "FRONTEND_IMAGE=${{ env.FRONTEND_IMAGE }}" >> .env
+
+            sudo docker compose pull frontend backend worker
             sudo docker compose up -d --remove-orphans
+            sudo docker image prune -af

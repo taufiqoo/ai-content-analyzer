@@ -1,8 +1,6 @@
 services:
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ${FRONTEND_IMAGE:-ghcr.io/taufiqoo/ai-content-analyzer-frontend:latest}
     ports:
       - "3000:3000"
     env_file: .env
@@ -14,10 +12,7 @@ services:
       - app-network
 
   backend:
-    image: ai-content-analyzer-backend:latest
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ${BACKEND_IMAGE:-ghcr.io/taufiqoo/ai-content-analyzer-backend:latest}
     ports:
       - "8000:8000"
     env_file: .env
@@ -26,13 +21,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
     networks:
       - app-network
 
   worker:
-    image: ai-content-analyzer-backend:latest
+    image: ${BACKEND_IMAGE:-ghcr.io/taufiqoo/ai-content-analyzer-backend:latest}
     command: celery -A app.celery_app worker --loglevel=info --concurrency=2
     env_file: .env
     depends_on:
@@ -40,8 +33,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
     networks:
       - app-network
 
