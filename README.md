@@ -11,7 +11,7 @@ The manual workflow for creating TikTok content takes **1–3 hours per batch**:
 2. Copy-paste content into a Claude/ChatGPT chat
 3. Ask it to write a TikTok script (hook, body, CTA)
 4. Revise multiple times until it sounds natural
-5. Copy the final script → record
+5. Copy the final script → record.
 
 This project **automates steps 1–4** entirely.
 
