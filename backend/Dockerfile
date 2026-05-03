@@ -9,14 +9,15 @@ RUN apt-get update && apt-get install -y \
     libcups2 libdrm2 libdbus-1-3 libxcb1 libxkbcommon0 libx11-6 \
     libxcomposite1 libxdamage1 libxext6 libxfixes3 libxrandr2 \
     libgbm1 libpango-1.0-0 libcairo2 libasound2 libatspi2.0-0 \
-    fonts-liberation fonts-dejavu \
+    fonts-liberation fonts-dejavu fonts-noto unifont \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright and dependencies with --with-deps flag
-RUN playwright install --with-deps chromium
+# Install Playwright browsers - install browsers first, then dependencies
+RUN playwright install chromium && \
+    playwright install-deps chromium
 
 COPY . .
 
