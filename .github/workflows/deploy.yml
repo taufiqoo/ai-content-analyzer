@@ -34,22 +34,22 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Navigate to project directory
             cd /home/ubuntu/ai-content-analyzer
 
-            # Install/Update Docker and Docker Compose
             if ! command -v docker &> /dev/null || ! docker compose version &> /dev/null; then
               echo "Installing/Updating Docker..."
               curl -fsSL https://get.docker.com | sudo sh
               sudo apt-get update && sudo apt-get install -y docker-buildx-plugin docker-compose-plugin
             fi
 
-            # Recreate .env file from GitHub Secrets (Safe multiline handling)
+            sudo docker compose down --remove-orphans
+            sudo docker system prune -af
+            sudo docker volume prune -f
+            sudo docker builder prune -af
+
             cat << 'EOF' > .env
             ${{ secrets.ENV_FILE }}
             EOF
 
-            # Start the application using Docker Compose
-            sudo docker compose down
             sudo docker compose build --no-cache
             sudo docker compose up -d
